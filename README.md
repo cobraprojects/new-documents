@@ -23,11 +23,10 @@ A [portable app ZIP](https://github.com/cobraprojects/new-documents/releases/lat
 ## Install and enable
 
 1. Open `New-Documents-Installer.pkg` and follow the installer. An administrator password is required; the app installs into `/Applications`.
-2. **New Documents Setup** opens when installation finishes. If it does not, open **New Documents** from Applications.
-3. Setup registers the Finder extension and requests enablement. If it reports that the extension is disabled, click **Extension Settings…** and enable **New Documents**. Depending on macOS, it appears under **New Documents** or **File Providers** in **System Settings → General → Login Items & Extensions**.
+2. Open **New Documents** from Applications.
+3. Click **Extension Settings…** and enable **New Documents** if it is disabled. Depending on macOS, it appears under **New Documents** or **File Providers** in **System Settings → General → Login Items & Extensions**.
 4. Return to setup and click **Check Status**.
-5. If enabled but the menu is missing, wait for any file copies to finish, then click **Relaunch Finder**.
-6. Right-click an empty area inside a local Finder folder, open **New**, and choose the document type.
+5. Right-click an empty area inside a local Finder folder, open **New**, and choose the document type.
 
 Close setup when finished. No login item, Terminal commands, or development tools are needed to use the app.
 
@@ -39,7 +38,7 @@ See [Apple’s instructions for opening an app from an unidentified developer](h
 
 ### Portable installation
 
-Unzip `New-Documents-Universal.zip`, move **New Documents.app** into your Applications folder, and open it to register and enable the extension. Use the same **Open Anyway** process if macOS blocks the app. Keep only one installed copy to avoid conflicting extension registrations.
+Unzip `New-Documents-Universal.zip`, move **New Documents.app** into `/Applications`, and open it to enable the extension in macOS settings. Use the same **Open Anyway** process if macOS blocks the app. Keep only one installed copy to avoid conflicting extension registrations.
 
 ## Customize the New menu
 
@@ -66,7 +65,7 @@ Disable **New Documents** in Extension Settings, then move **New Documents.app**
 
 ## Build from source
 
-Requires macOS and Xcode or Apple’s Command Line Tools, including Swift, `lipo`, `codesign`, `pkgbuild`, and `productbuild`. The icon is built from `assets/AppIcon.png` using macOS’s bundled `sips` and `iconutil` tools.
+Requires macOS and Xcode, including its asset catalog compiler, Swift, `lipo`, `codesign`, `pkgbuild`, and `productbuild`. The icon is built from `assets/AppIcon.png` using `sips` and Xcode’s asset catalog compiler (`actool`).
 
 ```sh
 git clone https://github.com/cobraprojects/new-documents.git
@@ -74,7 +73,7 @@ cd new-documents
 ./build.sh
 ```
 
-The script compiles Apple Silicon and Intel versions in parallel, combines them into universal binaries, signs the app locally, and creates:
+The script compiles the icon asset catalog and Apple Silicon/Intel executables, combines the executables into universal binaries, signs the app locally, and creates:
 
 ```text
 dist/New-Documents-Installer.pkg
@@ -93,6 +92,6 @@ Behavior tests cover settings persistence, duplicate and invalid extensions, saf
 
 ## How it works
 
-`src/FinderExtension.swift` builds the New submenu from a single settings read each time the menu opens. `src/FileTypes.swift` shares settings validation, persistence, and exclusive file creation between the app and extension. `src/MenuIcon.swift` resolves the semantic label color before Finder copies the icons. `src/FileTypesView.swift` provides the native file-type editor, while `src/main.swift` handles registration, enablement status, extension settings, and Finder relaunch. `src/installer/postinstall` opens setup in the logged-in user’s session after installation.
+`src/FinderExtension.swift` builds the New submenu from a single settings read each time the menu opens. `src/FileTypes.swift` shares settings validation, persistence, and exclusive file creation between the app and extension. `src/MenuIcon.swift` resolves the semantic label color before Finder copies the icons. `src/FileTypesView.swift` provides the native file-type editor, while `src/main.swift` uses AppKit’s normal application lifecycle and Finder Sync’s native extension settings and status APIs. The installer places the app in `/Applications` without post-install scripts. The compiled asset catalog supplies the icon to Finder, Dock, Spotlight, and launchers; no runtime icon override is used.
 
 The Finder extension is sandboxed with a filesystem read/write exception so it can create files in local folders chosen in Finder. macOS privacy restrictions and filesystem permissions still apply. The app contains no networking or telemetry code.

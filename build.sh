@@ -3,6 +3,8 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")" && pwd)"
 source_dir="$repo_dir/src"
 output_dir="$repo_dir/dist"
+version="1.3.0"
+build_number="6"
 mkdir -p "$output_dir"
 build_dir="$(mktemp -d /private/tmp/new-documents-build.XXXXXX)"
 trap 'rm -rf "$build_dir"' EXIT
@@ -12,16 +14,21 @@ mkdir -p "$app/Contents/MacOS" "$extension/Contents/MacOS" "$build_dir/packages"
 cp "$source_dir/NewDocuments-Info.plist" "$app/Contents/Info.plist"
 cp "$source_dir/NewDocumentsExtension-Info.plist" "$extension/Contents/Info.plist"
 for plist in "$app/Contents/Info.plist" "$extension/Contents/Info.plist"; do
-    /usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.2.2' "$plist"
-    /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 5' "$plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build_number" "$plist"
 done
-mkdir -p "$app/Contents/Resources" "$build_dir/AppIcon.iconset"
+mkdir -p "$app/Contents/Resources"
+cp -R "$repo_dir/assets/Assets.xcassets" "$build_dir/Assets.xcassets"
+icon_set="$build_dir/Assets.xcassets/AppIcon.appiconset"
 for size in 16 32 128 256 512; do
-    sips -z "$size" "$size" "$repo_dir/assets/AppIcon.png" --out "$build_dir/AppIcon.iconset/icon_${size}x${size}.png" >/dev/null
+    sips -z "$size" "$size" "$repo_dir/assets/AppIcon.png" --out "$icon_set/icon_${size}x${size}.png" >/dev/null
     double=$((size * 2))
-    sips -z "$double" "$double" "$repo_dir/assets/AppIcon.png" --out "$build_dir/AppIcon.iconset/icon_${size}x${size}@2x.png" >/dev/null
+    sips -z "$double" "$double" "$repo_dir/assets/AppIcon.png" --out "$icon_set/icon_${size}x${size}@2x.png" >/dev/null
 done
-iconutil -c icns "$build_dir/AppIcon.iconset" -o "$app/Contents/Resources/AppIcon.icns"
+xcrun actool "$build_dir/Assets.xcassets" --compile "$app/Contents/Resources" \
+    --platform macosx --minimum-deployment-target 13.0 --app-icon AppIcon \
+    --output-partial-info-plist "$build_dir/icon-info.plist" --output-format human-readable-text
+/usr/libexec/PlistBuddy -c "Merge $build_dir/icon-info.plist" "$app/Contents/Info.plist"
 compile_arch() {
     arch="$1"
     xcrun swiftc -O -target "$arch-apple-macos13.0" "$source_dir/main.swift" "$source_dir/FileTypesView.swift" "$source_dir/FileTypes.swift" \
@@ -41,14 +48,10 @@ xcrun lipo -create "$build_dir/extension-arm64" "$build_dir/extension-x86_64" -o
 codesign --force --sign - --timestamp=none --entitlements "$source_dir/extension.entitlements" "$extension"
 codesign --force --sign - --timestamp=none "$app"
 codesign --verify --deep --strict "$app"
-xcrun lipo "$app/Contents/MacOS/NewDocuments" -verify_arch arm64
-xcrun lipo "$extension/Contents/MacOS/NewDocumentsExtension" -verify_arch arm64
-xcrun lipo "$app/Contents/MacOS/NewDocuments" -verify_arch x86_64
-xcrun lipo "$extension/Contents/MacOS/NewDocumentsExtension" -verify_arch x86_64
 pkgbuild --root "$build_dir/payload" --identifier local.codex.NewDocuments.installer \
-    --version 1.2.2 --scripts "$source_dir/installer" --install-location / \
+    --version "$version" --install-location / \
     "$build_dir/packages/NewDocuments-component.pkg"
-cat > "$build_dir/distribution.xml" <<'XML'
+cat > "$build_dir/distribution.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="2">
   <title>New Documents</title>
@@ -59,14 +62,14 @@ cat > "$build_dir/distribution.xml" <<'XML'
   <domains enable_localSystem="true" enable_currentUserHome="false" enable_anywhere="false"/>
   <choices-outline><line choice="default"/></choices-outline>
   <choice id="default" visible="false"><pkg-ref id="local.codex.NewDocuments.installer"/></choice>
-  <pkg-ref id="local.codex.NewDocuments.installer" version="1.2.2" onConclusion="none">NewDocuments-component.pkg</pkg-ref>
+  <pkg-ref id="local.codex.NewDocuments.installer" version="$version" onConclusion="none">NewDocuments-component.pkg</pkg-ref>
 </installer-gui-script>
 XML
 cat > "$build_dir/resources/welcome.html" <<'HTML'
-<html><body style="font:14px -apple-system"><h1>New Documents</h1><p>Add a customizable <b>New</b> submenu to Finder’s right-click menu. Enable text, Markdown, code, and data file types, or add your own extensions.</p><p>Works on Apple Silicon and Intel Macs running macOS Ventura 13 or later. Installs New Documents.app in Applications.</p><p>Setup opens after installation to register the extension and show whether it is enabled.</p><p>Existing files are preserved. New files are named Untitled.txt or Untitled.md, with a number added when necessary.</p><p>macOS hides these extension menus in iCloud Drive and some other cloud-managed folders.</p></body></html>
+<html><body style="font:14px -apple-system"><h1>New Documents</h1><p>Add a customizable <b>New</b> submenu to Finder’s right-click menu. Enable text, Markdown, code, and data file types, or add your own extensions.</p><p>Works on Apple Silicon and Intel Macs running macOS Ventura 13 or later. Installs New Documents.app in Applications.</p><p>After installation, open New Documents from Applications to enable the Finder extension and choose file types.</p><p>Existing files are preserved. New files are named Untitled.txt or Untitled.md, with a number added when necessary.</p><p>macOS hides these extension menus in iCloud Drive and some other cloud-managed folders.</p></body></html>
 HTML
 cat > "$build_dir/resources/conclusion.html" <<'HTML'
-<html><body style="font:14px -apple-system"><h1>Finish setup</h1><ol><li>Open <b>New Documents</b> from Applications if its setup window hasn’t opened.</li><li>If the status says the extension is disabled, click <b>Extension Settings</b> and turn on New Documents. It may be listed under File Providers.</li><li>Click <b>Check Status</b>. If the menu is missing, use <b>Relaunch Finder</b> after file copies finish.</li><li>Right-click an empty area in a local Finder folder and open <b>New</b>. Use <b>Manage File Types</b> to customize the list.</li></ol><p>You can close setup after enabling the extension. No login item is needed.</p></body></html>
+<html><body style="font:14px -apple-system"><h1>Finish setup</h1><ol><li>Open <b>New Documents</b> from Applications.</li><li>If the status says the extension is disabled, click <b>Extension Settings</b> and turn on New Documents. It may be listed under File Providers.</li><li>Return to the app and click <b>Check Status</b>.</li><li>Right-click an empty area in a local Finder folder and open <b>New</b>. Use <b>Manage File Types</b> to customize the list.</li></ol><p>You can close setup after enabling the extension. No login item is needed.</p></body></html>
 HTML
 productbuild --distribution "$build_dir/distribution.xml" --resources "$build_dir/resources" \
     --package-path "$build_dir/packages" "$build_dir/New-Documents-Installer.pkg"
