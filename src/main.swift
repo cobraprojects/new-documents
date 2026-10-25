@@ -116,5 +116,8 @@ final class SetupController: NSObject, NSApplicationDelegate {
 let app = NSApplication.shared
 let setup = SetupController()
 app.delegate = setup
-app.setActivationPolicy(.regular)
+if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+   let icon = NSImage(contentsOf: iconURL) {
+    app.applicationIconImage = icon
+}
 app.run()

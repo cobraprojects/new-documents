@@ -12,8 +12,8 @@ mkdir -p "$app/Contents/MacOS" "$extension/Contents/MacOS" "$build_dir/packages"
 cp "$source_dir/NewDocuments-Info.plist" "$app/Contents/Info.plist"
 cp "$source_dir/NewDocumentsExtension-Info.plist" "$extension/Contents/Info.plist"
 for plist in "$app/Contents/Info.plist" "$extension/Contents/Info.plist"; do
-    /usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.2.1' "$plist"
-    /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 4' "$plist"
+    /usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.2.2' "$plist"
+    /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 5' "$plist"
 done
 mkdir -p "$app/Contents/Resources" "$build_dir/AppIcon.iconset"
 for size in 16 32 128 256 512; do
@@ -46,7 +46,7 @@ xcrun lipo "$extension/Contents/MacOS/NewDocumentsExtension" -verify_arch arm64
 xcrun lipo "$app/Contents/MacOS/NewDocuments" -verify_arch x86_64
 xcrun lipo "$extension/Contents/MacOS/NewDocumentsExtension" -verify_arch x86_64
 pkgbuild --root "$build_dir/payload" --identifier local.codex.NewDocuments.installer \
-    --version 1.2.1 --scripts "$source_dir/installer" --install-location / \
+    --version 1.2.2 --scripts "$source_dir/installer" --install-location / \
     "$build_dir/packages/NewDocuments-component.pkg"
 cat > "$build_dir/distribution.xml" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
@@ -59,7 +59,7 @@ cat > "$build_dir/distribution.xml" <<'XML'
   <domains enable_localSystem="true" enable_currentUserHome="false" enable_anywhere="false"/>
   <choices-outline><line choice="default"/></choices-outline>
   <choice id="default" visible="false"><pkg-ref id="local.codex.NewDocuments.installer"/></choice>
-  <pkg-ref id="local.codex.NewDocuments.installer" version="1.2.1" onConclusion="none">NewDocuments-component.pkg</pkg-ref>
+  <pkg-ref id="local.codex.NewDocuments.installer" version="1.2.2" onConclusion="none">NewDocuments-component.pkg</pkg-ref>
 </installer-gui-script>
 XML
 cat > "$build_dir/resources/welcome.html" <<'HTML'
