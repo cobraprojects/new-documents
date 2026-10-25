@@ -3,6 +3,8 @@ import FinderSync
 
 @objc(NewDocumentsExtension)
 final class NewDocumentsExtension: FIFinderSync {
+    private var menuTypes: [FileType] = []
+
     override init() {
         super.init()
         FIFinderSyncController.default().directoryURLs = [URL(fileURLWithPath: "/")]
@@ -13,36 +15,52 @@ final class NewDocumentsExtension: FIFinderSync {
               FIFinderSyncController.default().targetedURL() != nil else { return nil }
 
         let menu = NSMenu()
-        for (title, fileExtension) in [("New Text Document", "txt"), ("New Markdown File", "md")] {
-            let item = menu.addItem(withTitle: title, action: #selector(createDocument(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = fileExtension == "md" ? 1 : 0
-            item.image = NSImage(systemSymbolName: "doc.badge.plus", accessibilityDescription: nil)
+        let icon = MenuIcon.make("doc.badge.plus", appearance: NSApp.effectiveAppearance)
+        let new = menu.addItem(withTitle: "New", action: nil, keyEquivalent: "")
+        new.image = icon
+        let submenu = NSMenu(title: "New")
+        new.submenu = submenu
+        do {
+            menuTypes = try FileTypeStore().load().filter(\.enabled)
+            for (index, type) in menuTypes.enumerated() {
+                let item = submenu.addItem(withTitle: "\(type.name) (.\(type.fileExtension))",
+                                           action: #selector(createDocument(_:)), keyEquivalent: "")
+                item.target = self
+                item.tag = index
+                item.image = icon
+            }
+            if menuTypes.isEmpty {
+                let empty = submenu.addItem(withTitle: "No file types enabled", action: nil, keyEquivalent: "")
+                empty.isEnabled = false
+            }
+        } catch {
+            menuTypes = []
+            let unavailable = submenu.addItem(withTitle: "File types could not be loaded", action: nil, keyEquivalent: "")
+            unavailable.isEnabled = false
         }
+        submenu.addItem(.separator())
+        let settings = submenu.addItem(withTitle: "Manage File Types…", action: #selector(openSettings), keyEquivalent: "")
+        settings.target = self
+        settings.image = MenuIcon.make("gearshape", appearance: NSApp.effectiveAppearance)
         return menu
     }
 
     @objc private func createDocument(_ sender: NSMenuItem) {
-        guard let folder = FIFinderSyncController.default().targetedURL() else { return }
-        let original = folder.appendingPathComponent(sender.tag == 1 ? "Untitled.md" : "Untitled.txt")
-        var destination = original
-        var suffix = 2
+        guard menuTypes.indices.contains(sender.tag),
+              let folder = FIFinderSyncController.default().targetedURL() else { return }
         do {
-            while true {
-                do {
-                    try Data().write(to: destination, options: .withoutOverwriting)
-                    break
-                } catch CocoaError.fileWriteFileExists {
-                    destination = original.deletingLastPathComponent()
-                        .appendingPathComponent("Untitled \(suffix).\(original.pathExtension)")
-                    suffix += 1
-                }
-            }
+            let destination = try DocumentFiles.create(in: folder, type: menuTypes[sender.tag])
             NSWorkspace.shared.activateFileViewerSelecting([destination])
         } catch {
             let alert = NSAlert(error: error)
             alert.messageText = "Couldn’t create the document"
             alert.runModal()
         }
+    }
+
+    @objc private func openSettings() {
+        let app = Bundle.main.bundleURL.deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
     }
 }

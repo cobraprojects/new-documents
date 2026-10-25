@@ -2,12 +2,12 @@ import Cocoa
 import FinderSync
 
 final class SetupController: NSObject, NSApplicationDelegate {
-    private let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 350),
+    private let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 700),
                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
     private let status = NSTextField(wrappingLabelWithString: "Registering Finder extension…")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        window.title = "New Documents Setup"
+        window.title = "New Documents"
         window.center()
         let stack = NSStackView()
         stack.orientation = .vertical
@@ -18,8 +18,14 @@ final class SetupController: NSObject, NSApplicationDelegate {
         title.font = .boldSystemFont(ofSize: 22)
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(NSTextField(wrappingLabelWithString:
-            "Right-click an empty area in a local folder and choose New Text Document or New Markdown File. Press Return to rename the new file."))
+            "Right-click an empty area in a local Finder folder, open New, and choose a file type. Press Return to rename the new file."))
         status.font = .boldSystemFont(ofSize: 13)
+        let fileTypesTitle = NSTextField(labelWithString: "File Types")
+        fileTypesTitle.font = .boldSystemFont(ofSize: 15)
+        stack.addArrangedSubview(fileTypesTitle)
+        let fileTypes = FileTypesView()
+        stack.addArrangedSubview(fileTypes)
+        fileTypes.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         stack.addArrangedSubview(status)
         let buttons = NSStackView()
         buttons.spacing = 10
@@ -42,6 +48,7 @@ final class SetupController: NSObject, NSApplicationDelegate {
             stack.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 24)
         ])
         window.makeKeyAndOrderFront(nil)
+        fileTypes.load()
         NSApp.activate(ignoringOtherApps: true)
         let appPath = Bundle.main.bundleURL.path
         let extensionPath = Bundle.main.bundleURL.appendingPathComponent("Contents/PlugIns/NewDocumentsExtension.appex").path
@@ -57,6 +64,11 @@ final class SetupController: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) { refresh() }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        window.makeKeyAndOrderFront(nil)
+        return true
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     @objc private func refresh() {

@@ -1,0 +1,105 @@
+import Foundation
+import Darwin
+
+struct FileType: Codable, Equatable {
+    var name: String
+    var fileExtension: String
+    var enabled = true
+
+    init(name: String, fileExtension: String, enabled: Bool = true) throws {
+        self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.fileExtension = fileExtension.trimmingCharacters(in: .whitespacesAndNewlines)
+        if self.fileExtension.hasPrefix(".") { self.fileExtension.removeFirst() }
+        self.enabled = enabled
+        try validate()
+    }
+
+    func validate() throws {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-+"))
+        guard !name.isEmpty, name.utf8.count <= 100,
+              !name.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }),
+              !fileExtension.isEmpty, fileExtension.utf8.count <= 100,
+              !fileExtension.hasPrefix("."), !fileExtension.hasSuffix("."),
+              fileExtension.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
+            throw FileTypeError.invalidType
+        }
+    }
+}
+
+enum FileTypeError: LocalizedError {
+    case invalidType, duplicateExtension
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidType:
+            return "Enter a name and an extension such as txt, md, or config.json. Extensions can contain letters, numbers, dots, underscores, plus signs, and hyphens."
+        case .duplicateExtension:
+            return "That extension is already in the list. Enable its existing entry instead."
+        }
+    }
+}
+
+struct FileTypeStore {
+    let url: URL
+
+    init(url: URL? = nil) {
+        // A Finder extension's home directory is its sandbox, so resolve the user's real home.
+        let home = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
+        self.url = url ?? URL(fileURLWithPath: home)
+            .appendingPathComponent("Library/Application Support/New Documents/file-types.json")
+    }
+
+    static var defaults: [FileType] {
+        let types = [("Text Document", "txt"), ("Markdown File", "md"), ("JSON File", "json"),
+                     ("YAML File", "yaml"), ("HTML Document", "html"), ("CSS Stylesheet", "css"),
+                     ("JavaScript File", "js"), ("TypeScript File", "ts"), ("Python Script", "py"),
+                     ("Shell Script", "sh"), ("CSV File", "csv"), ("XML File", "xml"), ("SQL File", "sql")]
+        return types.map { try! FileType(name: $0.0, fileExtension: $0.1) }
+    }
+
+    func load() throws -> [FileType] {
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch CocoaError.fileReadNoSuchFile {
+            return Self.defaults
+        }
+        let types = try JSONDecoder().decode([FileType].self, from: data)
+        try validate(types)
+        return types
+    }
+
+    func save(_ types: [FileType]) throws {
+        try validate(types)
+        let data = try JSONEncoder().encode(types)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: url, options: .atomic)
+    }
+
+    private func validate(_ types: [FileType]) throws {
+        var extensions = Set<String>()
+        for type in types {
+            try type.validate()
+            guard extensions.insert(type.fileExtension.lowercased()).inserted else {
+                throw FileTypeError.duplicateExtension
+            }
+        }
+    }
+}
+
+enum DocumentFiles {
+    static func create(in folder: URL, type: FileType) throws -> URL {
+        try type.validate()
+        var suffix = 1
+        while true {
+            let name = suffix == 1 ? "Untitled" : "Untitled \(suffix)"
+            let destination = folder.appendingPathComponent("\(name).\(type.fileExtension)")
+            do {
+                try Data().write(to: destination, options: .withoutOverwriting)
+                return destination
+            } catch CocoaError.fileWriteFileExists {
+                suffix += 1
+            }
+        }
+    }
+}
