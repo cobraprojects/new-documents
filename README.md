@@ -1,5 +1,7 @@
 # New Documents
 
+<img src="assets/AppIcon.png" width="128" alt="New Documents app icon">
+
 Create empty text, code, and data files from a customizable **New** submenu in Finder’s right-click menu.
 
 - **New → Text Document** creates `Untitled.txt`.
@@ -64,7 +66,7 @@ Disable **New Documents** in Extension Settings, then move **New Documents.app**
 
 ## Build from source
 
-Requires macOS and Xcode or Apple’s Command Line Tools, including Swift, `lipo`, `codesign`, `pkgbuild`, and `productbuild`.
+Requires macOS and Xcode or Apple’s Command Line Tools, including Swift, `lipo`, `codesign`, `pkgbuild`, and `productbuild`. The icon is built from `assets/AppIcon.png` using macOS’s bundled `sips` and `iconutil` tools.
 
 ```sh
 git clone https://github.com/cobraprojects/new-documents.git
