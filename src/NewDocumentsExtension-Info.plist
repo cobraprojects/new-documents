@@ -16,6 +16,8 @@
 	<string>New Documents</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
