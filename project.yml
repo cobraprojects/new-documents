@@ -38,6 +38,7 @@ targets:
     sources:
       - path: src/FinderExtension.swift
       - path: src/FileTypes.swift
+      - path: src/DocumentTemplates.swift
       - path: src/MenuIcon.swift
       - path: src/PrivacyInfo.xcprivacy
     settings:

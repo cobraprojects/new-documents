@@ -2,11 +2,11 @@
 
 <img src="assets/AppIcon.png" width="128" alt="New Documents app icon">
 
-Create empty text, code, and data files from a customizable **New** submenu in Finder’s right-click menu.
+Create new text, Markdown, Office, and CSV files from a customizable **New** submenu in Finder’s right-click menu.
 
 - **New → Text Document** creates `Untitled.txt`.
 - **New → Markdown File** creates `Untitled.md`.
-- Includes JSON, YAML, HTML, CSS, JavaScript, TypeScript, Python, shell, CSV, XML, and SQL.
+- Also includes Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), and CSV. Add any other extension in **Manage File Types…**.
 - **New → Manage File Types…** lets you show or hide entries and add or remove custom extensions.
 - Menu icons use macOS’s text color for the current light or dark appearance.
 - Existing files are preserved: filenames increment to `Untitled 2.md`, and so on.
@@ -50,7 +50,7 @@ Open **New → Manage File Types…**, or open **New Documents** from Applicatio
 
 Changes save automatically and appear the next time the New menu opens. Duplicate extensions are rejected. Compound extensions such as `config.json` are supported. App Store builds store settings in their shared App Group container. Earlier GitHub releases used `~/Library/Application Support/New Documents/file-types.json`; their custom settings are separate from the App Store installation.
 
-All types create **empty files**. Adding an extension such as `.docx`, `.xlsx`, or `.png` does not create a valid document or image; those formats require structured content or a template. No script is executed when you create a file.
+`.docx`, `.xlsx`, and `.pptx` files start as minimal blank documents that open in Microsoft Office, Pages, Numbers, Keynote, and Quick Look. All other types create **empty files**, so adding an extension such as `.png` or `.pdf` does not create a valid image or document; those formats require structured content. No script is executed when you create a file.
 
 ## Limitations
 
@@ -97,10 +97,10 @@ The app has no networking, telemetry, advertising, or third-party runtime depend
 swift test --parallel
 ```
 
-Behavior tests cover settings persistence, duplicate and invalid extensions, safe concurrent file creation, and icon contrast after image serialization in light and dark appearances.
+Behavior tests cover settings persistence, valid blank Office documents, duplicate and invalid extensions, safe concurrent file creation, and icon contrast after image serialization in light and dark appearances.
 
 ## How it works
 
-`src/FinderExtension.swift` builds the New submenu from a single settings read each time the menu opens. `src/FileTypes.swift` shares settings validation, persistence, and exclusive file creation between the app and extension. `src/MenuIcon.swift` resolves the semantic label color before Finder copies the icons. `src/FileTypesView.swift` provides the native file-type editor, while `src/main.swift` uses AppKit’s normal application lifecycle and Finder Sync’s native extension settings and status APIs. The installer places the app in `/Applications` without post-install scripts. The compiled asset catalog supplies the icon to Finder, Dock, Spotlight, and launchers; no runtime icon override is used.
+`src/FinderExtension.swift` builds the New submenu from a single settings read each time the menu opens. `src/FileTypes.swift` shares settings validation, persistence, and exclusive file creation between the app and extension. `src/DocumentTemplates.swift` generates the blank Office documents. `src/MenuIcon.swift` resolves the semantic label color before Finder copies the icons. `src/FileTypesView.swift` provides the native file-type editor, while `src/main.swift` uses AppKit’s normal application lifecycle and Finder Sync’s native extension settings and status APIs. The installer places the app in `/Applications` without post-install scripts. The compiled asset catalog supplies the icon to Finder, Dock, Spotlight, and launchers; no runtime icon override is used.
 
 Both the app and Finder extension are sandboxed. The extension uses user-selected folder access and persistent security-scoped bookmarks. macOS privacy restrictions and filesystem permissions still apply.

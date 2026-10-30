@@ -57,10 +57,8 @@ struct FileTypeStore {
     }
 
     static var defaults: [FileType] {
-        let types = [("Text Document", "txt"), ("Markdown File", "md"), ("JSON File", "json"),
-                     ("YAML File", "yaml"), ("HTML Document", "html"), ("CSS Stylesheet", "css"),
-                     ("JavaScript File", "js"), ("TypeScript File", "ts"), ("Python Script", "py"),
-                     ("Shell Script", "sh"), ("CSV File", "csv"), ("XML File", "xml"), ("SQL File", "sql")]
+        let types = [("Text Document", "txt"), ("Markdown File", "md"), ("Word Document", "docx"),
+                     ("Excel Spreadsheet", "xlsx"), ("PowerPoint Presentation", "pptx"), ("CSV File", "csv")]
         return types.map { try! FileType(name: $0.0, fileExtension: $0.1) }
     }
 
@@ -98,12 +96,13 @@ struct FileTypeStore {
 enum DocumentFiles {
     static func create(in folder: URL, type: FileType) throws -> URL {
         try type.validate()
+        let contents = DocumentTemplates.contents(forExtension: type.fileExtension)
         var suffix = 1
         while true {
             let name = suffix == 1 ? "Untitled" : "Untitled \(suffix)"
             let destination = folder.appendingPathComponent("\(name).\(type.fileExtension)")
             do {
-                try Data().write(to: destination, options: .withoutOverwriting)
+                try contents.write(to: destination, options: .withoutOverwriting)
                 return destination
             } catch CocoaError.fileWriteFileExists {
                 suffix += 1

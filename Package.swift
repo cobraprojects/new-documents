@@ -9,7 +9,7 @@ let package = Package(
                 exclude: ["main.swift", "FileTypesView.swift", "FinderExtension.swift",
                           "NewDocuments-Info.plist", "NewDocumentsExtension-Info.plist", "extension.entitlements",
                           "app.entitlements", "PrivacyInfo.xcprivacy"],
-                sources: ["FileTypes.swift", "MenuIcon.swift"]),
+                sources: ["FileTypes.swift", "DocumentTemplates.swift", "MenuIcon.swift"]),
         .testTarget(name: "FileTypesTests", dependencies: ["NewDocumentsCore"])
     ]
 )

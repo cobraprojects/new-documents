@@ -35,10 +35,34 @@ final class FileTypesTests: XCTestCase {
         }
     }
 
-    func testNewInstallIncludesCommonFileTypes() throws {
+    func testNewInstallIncludesEverydayFileTypes() throws {
         let types = try FileTypeStore(url: folder.appendingPathComponent("settings.json")).load()
-        XCTAssertTrue(Set(["txt", "md", "json", "html", "py"]).isSubset(of: Set(types.map(\.fileExtension))))
+        XCTAssertEqual(types.map(\.fileExtension), ["txt", "md", "docx", "xlsx", "pptx", "csv"])
         XCTAssertTrue(types.allSatisfy(\.enabled))
+    }
+
+    func testOfficeDocumentsAreValidArchivesOfWellFormedXML() throws {
+        for ext in ["docx", "xlsx", "pptx", "report.DOCX"] {
+            let url = try DocumentFiles.create(in: folder, type: FileType(name: "Office", fileExtension: ext))
+            XCTAssertEqual(try unzip(["-tq", url.path]).contains("No errors"), true, ext)
+            let parts = try unzip(["-Z1", url.path]).split(separator: "\n").map(String.init)
+            XCTAssertTrue(parts.contains("[Content_Types].xml"), ext)
+            for part in parts {
+                XCTAssertNoThrow(try XMLDocument(data: Data(unzip(["-p", url.path, part.replacingOccurrences(of: "[", with: "[[]")]).utf8)), "\(ext) \(part)")
+            }
+        }
+    }
+
+    private func unzip(_ arguments: [String]) throws -> String {
+        let process = Process(), pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        process.arguments = arguments
+        process.standardOutput = pipe
+        try process.run()
+        let output = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0, arguments.joined(separator: " "))
+        return String(decoding: output, as: UTF8.self)
     }
 
     func testCustomizedTypesAndVisibilityPersist() throws {
