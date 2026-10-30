@@ -9,7 +9,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "13.0"
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.4.0"
-    CURRENT_PROJECT_VERSION: "8"
+    CURRENT_PROJECT_VERSION: "10"
     NEW_DOCUMENTS_APP_GROUP: group.com.cobraprojects.newdocuments
     ENABLE_HARDENED_RUNTIME: YES
 targets:
@@ -19,6 +19,7 @@ targets:
     sources:
       - path: src/main.swift
       - path: src/FileTypes.swift
+      - path: src/DocumentTemplates.swift
       - path: src/FileTypesView.swift
       - path: src/PrivacyInfo.xcprivacy
       - path: assets/Assets.xcassets

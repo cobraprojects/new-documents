@@ -65,6 +65,31 @@ final class FileTypesTests: XCTestCase {
         return String(decoding: output, as: UTF8.self)
     }
 
+    func testUpdateAddsNewDefaultsOnceToSavedLists() throws {
+        let url = folder.appendingPathComponent("settings.json")
+        let legacy = [try FileType(name: "Text Document", fileExtension: "txt", enabled: false),
+                      try FileType(name: "JSON File", fileExtension: "json"),
+                      try FileType(name: "Python Script", fileExtension: "py", enabled: false),
+                      try FileType(name: "Configuration", fileExtension: "toml")]
+        try JSONEncoder().encode(legacy).write(to: url)
+        let store = FileTypeStore(url: url)
+        let upgraded = try store.load()
+        XCTAssertEqual(upgraded.map(\.fileExtension), ["txt", "toml", "docx", "xlsx", "pptx"])
+        XCTAssertFalse(upgraded[0].enabled)
+        XCTAssertEqual(try store.load(), upgraded)
+
+        let withoutWord = upgraded.filter { $0.fileExtension != "docx" }
+        try store.save(withoutWord)
+        XCTAssertEqual(try store.load(), withoutWord)
+    }
+
+    func testFirstSaveOnNewInstallDoesNotRestoreRemovedDefaults() throws {
+        let store = FileTypeStore(url: folder.appendingPathComponent("settings.json"))
+        let withoutPowerPoint = try store.load().filter { $0.fileExtension != "pptx" }
+        try store.save(withoutPowerPoint)
+        XCTAssertEqual(try store.load(), withoutPowerPoint)
+    }
+
     func testCustomizedTypesAndVisibilityPersist() throws {
         let url = folder.appendingPathComponent("preferences/settings.json")
         let types = [try FileType(name: "Text", fileExtension: "txt", enabled: false),

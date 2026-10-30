@@ -30,6 +30,8 @@ A [portable app ZIP](https://github.com/cobraprojects/new-documents/releases/lat
 
 Close setup when finished. No login item, Terminal commands, or development tools are needed to use the app.
 
+If **New** does not appear after installing or updating, hold **Option**, right-click Finder in the Dock, and choose **Relaunch**.
+
 ### If macOS blocks the download
 
 This release is locally signed and **has not been signed with Developer ID or notarized by Apple**. After attempting to open the installer, go to **System Settings → Privacy & Security → Open Anyway** for this package, then confirm.
@@ -48,14 +50,14 @@ Open **New → Manage File Types…**, or open **New Documents** from Applicatio
 - Click **Add File Type…**, enter a name and an extension (for example, `Configuration File` and `.toml`), then click **Add**.
 - Select one or more rows and click **Remove** to delete entries from the list. This does not delete any documents.
 
-Changes save automatically and appear the next time the New menu opens. Duplicate extensions are rejected. Compound extensions such as `config.json` are supported. App Store builds store settings in their shared App Group container. Earlier GitHub releases used `~/Library/Application Support/New Documents/file-types.json`; their custom settings are separate from the App Store installation.
+Changes save automatically and appear the next time the New menu opens. When an update adds a new built-in file type, it is added once to your saved list; types you removed stay removed. Updating from 1.4.0 build 9 or earlier also removes the old built-in developer types (JSON, YAML, HTML, CSS, JavaScript, TypeScript, Python, shell, XML, SQL); add any of them back with **Add File Type…**. Duplicate extensions are rejected. Compound extensions such as `config.json` are supported. App Store builds store settings in their shared App Group container. Earlier GitHub releases used `~/Library/Application Support/New Documents/file-types.json`; their custom settings are separate from the App Store installation.
 
 `.docx`, `.xlsx`, and `.pptx` files start as minimal blank documents that open in Microsoft Office, Pages, Numbers, Keynote, and Quick Look. All other types create **empty files**, so adding an extension such as `.png` or `.pdf` does not create a valid image or document; those formats require structured content. No script is executed when you create a file.
 
 ## Limitations
 
 - macOS suppresses these Finder extension menu items in **iCloud Drive and some other cloud-managed folders**, including Desktop and Documents when synced to iCloud.
-- The actions appear when right-clicking the **empty area of a folder**, rather than an individual file. Special Finder views such as Recents are not normal destination folders.
+- The actions appear when right-clicking a folder’s empty area or any file in it; the new file is created in the folder you are viewing. Special Finder views such as Recents are not normal destination folders.
 - The destination folder must be writable.
 - Both processor architectures are included and target macOS 13. Setup, custom file types, visibility changes, and document creation were checked on Apple Silicon. Icon rendering is regression-tested for both light and dark appearances. An Intel Mac and macOS 13 were not available for runtime testing.
 

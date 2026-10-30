@@ -31,7 +31,7 @@ final class FileTypesView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         remove.action = #selector(removeTypes)
         remove.isEnabled = false
         buttons.addArrangedSubview(remove)
-        let note = NSTextField(wrappingLabelWithString: "Changes save automatically and apply the next time you open Finder’s New menu. Each type creates an empty file; document formats such as .docx need a template to be valid.")
+        let note = NSTextField(wrappingLabelWithString: "Changes save automatically and apply the next time you open Finder’s New menu. Word, Excel, and PowerPoint files start as blank documents; other types create an empty file.")
         note.font = .systemFont(ofSize: 12)
         note.textColor = .secondaryLabelColor
         let stack = NSStackView(views: [scroll, buttons, note])

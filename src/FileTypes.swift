@@ -62,6 +62,18 @@ struct FileTypeStore {
         return types.map { try! FileType(name: $0.0, fileExtension: $0.1) }
     }
 
+    /// Built-in types shipped in 1.4.0 build 9 and earlier, before built-in types were recorded.
+    private static let legacyDefaults = [("Text Document", "txt"), ("Markdown File", "md"), ("JSON File", "json"),
+                                         ("YAML File", "yaml"), ("HTML Document", "html"), ("CSS Stylesheet", "css"),
+                                         ("JavaScript File", "js"), ("TypeScript File", "ts"), ("Python Script", "py"),
+                                         ("Shell Script", "sh"), ("CSV File", "csv"), ("XML File", "xml"), ("SQL File", "sql")]
+
+    /// Records which built-in types a saved list has already been offered, so new built-in types in
+    /// later versions are added once without restoring types the user removed.
+    private var builtInTypesURL: URL {
+        get throws { try url.deletingLastPathComponent().appendingPathComponent("built-in-types.json") }
+    }
+
     func load() throws -> [FileType] {
         let data: Data
         do {
@@ -69,8 +81,20 @@ struct FileTypeStore {
         } catch CocoaError.fileReadNoSuchFile {
             return Self.defaults
         }
-        let types = try JSONDecoder().decode([FileType].self, from: data)
+        var types = try JSONDecoder().decode([FileType].self, from: data)
         try validate(types)
+        let recorded = try? JSONDecoder().decode(Set<String>.self, from: Data(contentsOf: builtInTypesURL))
+        let offered = recorded ?? Set(Self.legacyDefaults.map(\.1))
+        let current = Set(Self.defaults.map(\.fileExtension))
+        guard recorded == nil || !current.isSubset(of: offered) else { return types }
+        if recorded == nil {
+            // Upgrading from the old developer-focused list: drop old built-in entries that are no longer built in.
+            let retired = Self.legacyDefaults.filter { !current.contains($0.1) }
+            types.removeAll { type in retired.contains { $0.0 == type.name && $0.1 == type.fileExtension } }
+        }
+        let existing = Set(types.map { $0.fileExtension.lowercased() })
+        types += Self.defaults.filter { !offered.contains($0.fileExtension) && !existing.contains($0.fileExtension) }
+        try? save(types)
         return types
     }
 
@@ -80,6 +104,7 @@ struct FileTypeStore {
         let url = try url
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
+        try JSONEncoder().encode(Self.defaults.map(\.fileExtension)).write(to: builtInTypesURL, options: .atomic)
     }
 
     private func validate(_ types: [FileType]) throws {

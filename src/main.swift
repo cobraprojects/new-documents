@@ -33,7 +33,7 @@ final class SetupController: NSObject, NSApplicationDelegate {
         buttons.addArrangedSubview(NSButton(title: "Check Status", target: self, action: #selector(refresh)))
         stack.addArrangedSubview(buttons)
         let note = NSTextField(wrappingLabelWithString:
-            "If needed, turn on New Documents in System Settings → General → Login Items & Extensions. Look under New Documents or File Providers.\n\nThe first time you create a file, select its folder or a parent folder to allow access. Permission is remembered. macOS hides these menu items in iCloud Drive and some other cloud-managed folders.")
+            "If needed, turn on New Documents in System Settings → General → Login Items & Extensions. Look under New Documents or File Providers. If New does not appear, hold Option, right-click Finder in the Dock, and choose Relaunch.\n\nThe first time you create a file, select its folder or a parent folder to allow access. Permission is remembered. macOS hides these menu items in iCloud Drive and some other cloud-managed folders.")
         note.textColor = .secondaryLabelColor
         note.font = .systemFont(ofSize: 12)
         stack.addArrangedSubview(note)

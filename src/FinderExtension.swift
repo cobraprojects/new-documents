@@ -11,7 +11,8 @@ final class NewDocumentsExtension: FIFinderSync {
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
-        guard menuKind == .contextualMenuForContainer,
+        // Also offer the menu on items: in full List view windows there is no empty space to click.
+        guard menuKind == .contextualMenuForContainer || menuKind == .contextualMenuForItems,
               FIFinderSyncController.default().targetedURL() != nil else { return nil }
 
         let menu = NSMenu()
@@ -89,13 +90,18 @@ final class NewDocumentsExtension: FIFinderSync {
             ancestor.deleteLastPathComponent()
         }
 
+        // Offer the real Home folder (not the sandbox container) so one approval covers most folders.
+        let home = getpwuid(getuid()).flatMap { URL(fileURLWithPath: String(cString: $0.pointee.pw_dir)) }
+        let inHome = home.map { folder.standardizedFileURL.path.hasPrefix($0.standardizedFileURL.path + "/") } ?? false
         let panel = NSOpenPanel()
         panel.title = "Allow New Documents to create files"
-        panel.message = "Choose this folder or a parent folder. Permission is remembered for future files in that folder."
+        panel.message = inHome
+            ? "Click Allow to let New Documents create files anywhere in your Home folder. You’ll only be asked once."
+            : "Click Allow to let New Documents create files in this folder. You’ll only be asked once for it."
         panel.prompt = "Allow"
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.directoryURL = folder
+        panel.directoryURL = inHome ? home : folder
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let selected = panel.url else { return nil }
         defer { selected.stopAccessingSecurityScopedResource() }
