@@ -4,6 +4,7 @@ import FinderSync
 @objc(NewDocumentsExtension)
 final class NewDocumentsExtension: FIFinderSync {
     private var menuTypes: [FileType] = []
+    private var permissionPanel: NSOpenPanel?
 
     override init() {
         super.init()
@@ -47,12 +48,17 @@ final class NewDocumentsExtension: FIFinderSync {
     }
 
     @objc private func createDocument(_ sender: NSMenuItem) {
+        if let permissionPanel {
+            permissionPanel.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
         guard menuTypes.indices.contains(sender.tag),
               let folder = FIFinderSyncController.default().targetedURL() else { return }
         let type = menuTypes[sender.tag]
-        DispatchQueue.main.async {
+        Task { @MainActor in
             do {
-                guard let access = try self.authorizedFolder(containing: folder) else { return }
+                guard let access = try await self.authorizedFolder(containing: folder) else { return }
                 defer { access.stopAccessingSecurityScopedResource() }
                 let destination = try DocumentFiles.create(in: folder, type: type)
                 NSWorkspace.shared.activateFileViewerSelecting([destination])
@@ -64,7 +70,7 @@ final class NewDocumentsExtension: FIFinderSync {
         }
     }
 
-    private func authorizedFolder(containing folder: URL) throws -> URL? {
+    @MainActor private func authorizedFolder(containing folder: URL) async throws -> URL? {
         var bookmarks = UserDefaults.standard.dictionary(forKey: "authorizedFolders") as? [String: Data] ?? [:]
         var ancestor = folder.standardizedFileURL
         while true {
@@ -102,8 +108,14 @@ final class NewDocumentsExtension: FIFinderSync {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.directoryURL = inHome ? home : folder
-        NSApp.activate(ignoringOtherApps: true)
-        guard panel.runModal() == .OK, let selected = panel.url else { return nil }
+        permissionPanel = panel
+        defer { permissionPanel = nil }
+        let response = await withCheckedContinuation { continuation in
+            panel.begin { continuation.resume(returning: $0) }
+            panel.orderFrontRegardless()
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        guard response == .OK, let selected = panel.url else { return nil }
         defer { selected.stopAccessingSecurityScopedResource() }
         let path = selected.standardizedFileURL.path
         guard folder.standardizedFileURL.path == path || folder.standardizedFileURL.path.hasPrefix(path == "/" ? "/" : path + "/") else {
