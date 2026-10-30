@@ -48,7 +48,7 @@ Open **New → Manage File Types…**, or open **New Documents** from Applicatio
 - Click **Add File Type…**, enter a name and an extension (for example, `Configuration File` and `.toml`), then click **Add**.
 - Select one or more rows and click **Remove** to delete entries from the list. This does not delete any documents.
 
-Changes save automatically and appear the next time the New menu opens. Duplicate extensions are rejected. Compound extensions such as `config.json` are supported. Settings persist across upgrades in `~/Library/Application Support/New Documents/file-types.json`.
+Changes save automatically and appear the next time the New menu opens. Duplicate extensions are rejected. Compound extensions such as `config.json` are supported. App Store builds store settings in their shared App Group container. Earlier GitHub releases used `~/Library/Application Support/New Documents/file-types.json`; their custom settings are separate from the App Store installation.
 
 All types create **empty files**. Adding an extension such as `.docx`, `.xlsx`, or `.png` does not create a valid document or image; those formats require structured content or a template. No script is executed when you create a file.
 
@@ -65,7 +65,7 @@ Disable **New Documents** in Extension Settings, then move **New Documents.app**
 
 ## Build from source
 
-Requires macOS and Xcode, including its asset catalog compiler, Swift, `lipo`, `codesign`, `pkgbuild`, and `productbuild`. The icon is built from `assets/AppIcon.png` using `sips` and Xcode’s asset catalog compiler (`actool`).
+Requires macOS, Xcode, an Apple Developer team configured in Xcode Settings → Accounts, and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Install XcodeGen with `brew install xcodegen`.
 
 ```sh
 git clone https://github.com/cobraprojects/new-documents.git
@@ -73,14 +73,23 @@ cd new-documents
 ./build.sh
 ```
 
-The script compiles the icon asset catalog and Apple Silicon/Intel executables, combines the executables into universal binaries, signs the app locally, and creates:
+`project.yml` defines the app and Finder extension targets. The script generates the Xcode project, archives a universal Apple Silicon/Intel app, and creates a development-signed ZIP in `dist/`. Development builds require the Mac to be registered on the selected team; they are for testing and are not a replacement for the public GitHub installers above.
 
-```text
-dist/New-Documents-Installer.pkg
-dist/New-Documents-Universal.zip
+For Mac App Store distribution:
+
+```sh
+./build.sh app-store
 ```
 
-No third-party runtime dependencies are required. The build uses a temporary local folder and removes it afterward.
+This exports the signed package to `dist/AppStore/New Documents.pkg`. Upload it using Xcode Organizer or Transporter. The team is configured in `project.yml` and `AppStoreExportOptions.plist`; publishing under another team also requires unique bundle and App Group identifiers. The checked-in icon asset catalog contains all required Mac icon sizes.
+
+## App Store setup and privacy
+
+Both targets use App Sandbox and share file-type preferences through an App Group. The Finder extension asks the user to select a destination folder or a parent folder before creating its first file there. Security-scoped bookmarks remember this permission across launches. File creation never uses a broad filesystem exception.
+
+macOS requires users to enable the Finder extension once in System Settings. The app opens that settings page directly. No login item is installed.
+
+The app has no networking, telemetry, advertising, or third-party runtime dependencies. [Privacy policy](https://cobraprojects.github.io/new-documents/privacy.html). Its source is `docs/privacy.html`, served through GitHub Pages from the `docs` directory.
 
 ## Tests
 
@@ -94,4 +103,4 @@ Behavior tests cover settings persistence, duplicate and invalid extensions, saf
 
 `src/FinderExtension.swift` builds the New submenu from a single settings read each time the menu opens. `src/FileTypes.swift` shares settings validation, persistence, and exclusive file creation between the app and extension. `src/MenuIcon.swift` resolves the semantic label color before Finder copies the icons. `src/FileTypesView.swift` provides the native file-type editor, while `src/main.swift` uses AppKit’s normal application lifecycle and Finder Sync’s native extension settings and status APIs. The installer places the app in `/Applications` without post-install scripts. The compiled asset catalog supplies the icon to Finder, Dock, Spotlight, and launchers; no runtime icon override is used.
 
-The Finder extension is sandboxed with a filesystem read/write exception so it can create files in local folders chosen in Finder. macOS privacy restrictions and filesystem permissions still apply. The app contains no networking or telemetry code.
+Both the app and Finder extension are sandboxed. The extension uses user-selected folder access and persistent security-scoped bookmarks. macOS privacy restrictions and filesystem permissions still apply.

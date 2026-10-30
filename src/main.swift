@@ -33,13 +33,16 @@ final class SetupController: NSObject, NSApplicationDelegate {
         buttons.addArrangedSubview(NSButton(title: "Check Status", target: self, action: #selector(refresh)))
         stack.addArrangedSubview(buttons)
         let note = NSTextField(wrappingLabelWithString:
-            "If needed, turn on New Documents in System Settings → General → Login Items & Extensions. Look under New Documents or File Providers.\n\nmacOS hides these menu items in iCloud Drive and some other cloud-managed folders.")
+            "If needed, turn on New Documents in System Settings → General → Login Items & Extensions. Look under New Documents or File Providers.\n\nThe first time you create a file, select its folder or a parent folder to allow access. Permission is remembered. macOS hides these menu items in iCloud Drive and some other cloud-managed folders.")
         note.textColor = .secondaryLabelColor
         note.font = .systemFont(ofSize: 12)
         stack.addArrangedSubview(note)
         let done = NSButton(title: "Done", target: self, action: #selector(quit))
         done.keyEquivalent = "\r"
-        stack.addArrangedSubview(done)
+        let footer = NSStackView(views: [done,
+            NSButton(title: "Privacy Policy", target: self, action: #selector(openPrivacyPolicy))])
+        footer.spacing = 10
+        stack.addArrangedSubview(footer)
         window.contentView!.addSubview(stack)
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor, constant: 24),
@@ -67,6 +70,10 @@ final class SetupController: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() { FIFinderSyncController.showExtensionManagementInterface() }
+
+    @objc private func openPrivacyPolicy() {
+        NSWorkspace.shared.open(URL(string: "https://cobraprojects.github.io/new-documents/privacy.html")!)
+    }
 
     @objc private func quit() { NSApp.terminate(nil) }
 }

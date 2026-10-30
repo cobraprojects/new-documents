@@ -7,9 +7,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>New Documents</string>
 	<key>CFBundleExecutable</key>
-	<string>NewDocumentsExtension</string>
+	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>local.codex.NewDocuments.FinderExtension</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -17,11 +17,11 @@
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>13.0</string>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>
@@ -31,5 +31,9 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>NewDocumentsExtension</string>
 	</dict>
+	<key>NewDocumentsAppGroup</key>
+	<string>$(NEW_DOCUMENTS_APP_GROUP)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

@@ -48,14 +48,70 @@ final class NewDocumentsExtension: FIFinderSync {
     @objc private func createDocument(_ sender: NSMenuItem) {
         guard menuTypes.indices.contains(sender.tag),
               let folder = FIFinderSyncController.default().targetedURL() else { return }
-        do {
-            let destination = try DocumentFiles.create(in: folder, type: menuTypes[sender.tag])
-            NSWorkspace.shared.activateFileViewerSelecting([destination])
-        } catch {
-            let alert = NSAlert(error: error)
-            alert.messageText = "Couldn’t create the document"
-            alert.runModal()
+        let type = menuTypes[sender.tag]
+        DispatchQueue.main.async {
+            do {
+                guard let access = try self.authorizedFolder(containing: folder) else { return }
+                defer { access.stopAccessingSecurityScopedResource() }
+                let destination = try DocumentFiles.create(in: folder, type: type)
+                NSWorkspace.shared.activateFileViewerSelecting([destination])
+            } catch {
+                let alert = NSAlert(error: error)
+                alert.messageText = "Couldn’t create the document"
+                alert.runModal()
+            }
         }
+    }
+
+    private func authorizedFolder(containing folder: URL) throws -> URL? {
+        var bookmarks = UserDefaults.standard.dictionary(forKey: "authorizedFolders") as? [String: Data] ?? [:]
+        var ancestor = folder.standardizedFileURL
+        while true {
+            if let data = bookmarks[ancestor.path] {
+                var stale = false
+                if let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI],
+                                      relativeTo: nil, bookmarkDataIsStale: &stale),
+                   url.startAccessingSecurityScopedResource() {
+                    if stale {
+                        do {
+                            bookmarks[ancestor.path] = try url.bookmarkData(options: .withSecurityScope,
+                                includingResourceValuesForKeys: nil, relativeTo: nil)
+                            UserDefaults.standard.set(bookmarks, forKey: "authorizedFolders")
+                        } catch {
+                            url.stopAccessingSecurityScopedResource()
+                            throw error
+                        }
+                    }
+                    return url
+                }
+            }
+            guard ancestor.path != "/" else { break }
+            ancestor.deleteLastPathComponent()
+        }
+
+        let panel = NSOpenPanel()
+        panel.title = "Allow New Documents to create files"
+        panel.message = "Choose this folder or a parent folder. Permission is remembered for future files in that folder."
+        panel.prompt = "Allow"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.directoryURL = folder
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let selected = panel.url else { return nil }
+        defer { selected.stopAccessingSecurityScopedResource() }
+        let path = selected.standardizedFileURL.path
+        guard folder.standardizedFileURL.path == path || folder.standardizedFileURL.path.hasPrefix(path == "/" ? "/" : path + "/") else {
+            throw CocoaError(.fileWriteNoPermission)
+        }
+        let data = try selected.bookmarkData(options: .withSecurityScope,
+            includingResourceValuesForKeys: nil, relativeTo: nil)
+        bookmarks[path] = data
+        UserDefaults.standard.set(bookmarks, forKey: "authorizedFolders")
+        var stale = false
+        let access = try URL(resolvingBookmarkData: data, options: .withSecurityScope,
+                             relativeTo: nil, bookmarkDataIsStale: &stale)
+        guard access.startAccessingSecurityScopedResource() else { throw CocoaError(.fileWriteNoPermission) }
+        return access
     }
 
     @objc private func openSettings() {

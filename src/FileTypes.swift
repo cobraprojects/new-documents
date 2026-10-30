@@ -1,5 +1,4 @@
 import Foundation
-import Darwin
 
 struct FileType: Codable, Equatable {
     var name: String
@@ -40,13 +39,21 @@ enum FileTypeError: LocalizedError {
 }
 
 struct FileTypeStore {
-    let url: URL
+    private let customURL: URL?
 
     init(url: URL? = nil) {
-        // A Finder extension's home directory is its sandbox, so resolve the user's real home.
-        let home = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
-        self.url = url ?? URL(fileURLWithPath: home)
-            .appendingPathComponent("Library/Application Support/New Documents/file-types.json")
+        customURL = url
+    }
+
+    private var url: URL {
+        get throws {
+            if let customURL { return customURL }
+            guard let group = Bundle.main.object(forInfoDictionaryKey: "NewDocumentsAppGroup") as? String,
+                  let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else {
+                throw CocoaError(.fileReadNoPermission)
+            }
+            return container.appendingPathComponent("file-types.json")
+        }
     }
 
     static var defaults: [FileType] {
@@ -72,6 +79,7 @@ struct FileTypeStore {
     func save(_ types: [FileType]) throws {
         try validate(types)
         let data = try JSONEncoder().encode(types)
+        let url = try url
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
     }
